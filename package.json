@@ -1,0 +1,23 @@
+{
+  "name": "yup-to-swagger",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gjergjk71/yup-to-swagger.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gjergjk71/yup-to-swagger/issues"
+  },
+  "homepage": "https://github.com/gjergjk71/yup-to-swagger#readme",
+  "dependencies": {
+    "yup": "^0.32.9"
+  }
+}
