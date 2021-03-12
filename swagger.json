@@ -1,0 +1,36 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "API Docs",
+      "description": "",
+      "contact": {
+        "email": "gjergjk71@gmail.com"
+      },
+      "license": {
+        "name": "Apache 2.0",
+        "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+      },
+      "version": "1.0.0"
+    },
+    "servers": [],
+    "tags": [],
+    "paths": {},
+    "components": {
+      "securitySchemes": {},
+      "schemas": {
+        "ApiResponse": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "example": "success"
+            },
+            "code": {
+              "type": "integer",
+              "example": 200
+            }
+          }
+        }
+      }
+    }
+}

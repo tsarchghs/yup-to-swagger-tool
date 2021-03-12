@@ -1,0 +1,19 @@
+{
+  "name": "docs-collector",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "swagger-ui-express": "^4.1.5",
+    "yamljs": "^0.3.0"
+  }
+}
