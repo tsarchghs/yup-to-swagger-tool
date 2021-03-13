@@ -17,7 +17,7 @@ Interpreter.prototype.parse_object_field = object_field => {
     let fields = Object.keys(object_field.fields);
     for (field of fields){
         let field_schema = object_field.fields[field];
-        if (field_schema.spec.presence === "required") required.push(field);
+        if ((field_schema.spec && field_schema.spec.presence === "required")) required.push(field);
         properties[field] = Interpreter.prototype.parse_field(field_schema,field);
     }
     let parsed =  {
@@ -54,7 +54,8 @@ Interpreter.prototype.parse_array_field = object_field => {
 
 Interpreter.prototype.parse_field = (field,field_name) => {
     let { type } = field;
-    console.log("DEBUG: parse_field - ",type)
+    if (!type) return {}
+    // console.log("DEBUG: parse_field - ",type,field)
     let schema; 
     if (type === "string") schema = Interpreter.prototype.parse_string_field(field);
     if (type === "boolean") schema = { type: "boolean" }
@@ -62,10 +63,10 @@ Interpreter.prototype.parse_field = (field,field_name) => {
     else if (type === "array") schema = Interpreter.prototype.parse_array_field(field);
     else if (type === "object") schema = Interpreter.prototype.parse_object_field(field);
     if (schema){
-        if (field.spec.meta) {
+        if (field.spec && field.spec.meta) {
             if (field.spec.meta.example){
                 try {
-                    console.log("Validating",field_name,field.spec.meta.example,field)
+                    // console.log("Validating",field_name,field.spec.meta.example,field)
                     field.validateSync(field.spec.meta.example, { strict: true })
                 } catch(err){
                     throw new Error(`Example for field: ${field_name || "<anonymous_field>"} is invalid: \n${JSON.stringify(err.errors).replace("this",field_name || "<anonymous_field>")}`)
@@ -118,11 +119,11 @@ Interpreter.prototype.parse_query_or_params_or_headers = (in_,schema) => {
             in: in_,
             name: field,
             schema: Interpreter.prototype.parse_field(field_schema),
-            required: field_schema.spec.presence === "required",
-            description: field_schema.spec.meta && field_schema.spec.meta.description
+            required: (field_schema.spec && field_schema.spec.presence === "required"),
+            description: field_schema.spec && field_schema.spec.meta && field_schema.spec.meta.description
         })
     }
-    console.log({parameters})
+    // console.log({parameters})
     return parameters;
 }
 
@@ -130,14 +131,15 @@ Interpreter.prototype.parse_query = query => Interpreter.prototype.parse_query_o
 Interpreter.prototype.parse_params = params => Interpreter.prototype.parse_query_or_params_or_headers("path",params)
 Interpreter.prototype.parse_headers = headers => Interpreter.prototype.parse_query_or_params_or_headers("header",headers)
 
-Interpreter.prototype.parse_schema = yup_schema => {
-    let swagger_path
-    let { spec: { meta } } = yup_schema
+Interpreter.prototype.parse_schema = (yup_schema,meta_) => {
+    let meta = (yup_schema.spec && yup_schema.spec.meta) || meta_;
     if (meta) swagger_path = { ...(Interpreter.prototype.parse_meta({ meta })) }
     else throw new Error("meta is required") 
     
-    if ((yup_schema instanceof yup.object) === false){
-        throw new Error("Schema must be a object")
+    if (yup_schema.type !== "object"){
+        // throw new Error("Schema must be a object")
+        // console.log(yup_schema)
+        return {}
     }
 
     let inside_path = swagger_path[Object.keys(swagger_path)[0]][meta.method]
@@ -176,34 +178,34 @@ Interpreter.prototype.parse_schema = yup_schema => {
     return swagger_path
 }
 
-let interpreter = new Interpreter();
+// let interpreter = new Interpreter();
 
 
-let result = interpreter.parse_schema(
-    yup.object().shape({
-        requestBody: yup.object().shape({
-            name: yup.string().required().meta({ example: "Gjergj"}),
-            user: yup.object().shape({
-                id: yup.number().integer().required()
-            }).required().meta({ example: { id: 1 }}),
-            items: yup.array().of(yup.number()).required().meta({ example: [1,2,3] }),
-            items_2: yup.array().of(yup.string()).required().meta({ example:  [ "SDDSA", "SDAASD" ] }),
-            required: yup.boolean().required().meta({ example: true })
-        }),
-        query: yup.object().shape({
-            err_per_field: yup.boolean()
-        }),
-        params: yup.object().shape({
-            user_id: yup.number().integer().required()
-        }),
-        headers: yup.object().shape({
-            Authorization: yup.string().required()
-        })
-    }).meta({ path: "/users/{user_id}", method: "post", summary: "Update a user", description: "Update a user" })
-)
+// let result = interpreter.parse_schema(
+//     yup.object().shape({
+//         requestBody: yup.object().shape({
+//             name: yup.string().required().meta({ example: "Gjergj"}),
+//             user: yup.object().shape({
+//                 id: yup.number().integer().required()
+//             }).required().meta({ example: { id: 1 }}),
+//             items: yup.array().of(yup.number()).required().meta({ example: [1,2,3] }),
+//             items_2: yup.array().of(yup.string()).required().meta({ example:  [ "SDDSA", "SDAASD" ] }),
+//             required: yup.boolean().required().meta({ example: true })
+//         }),
+//         query: yup.object().shape({
+//             err_per_field: yup.boolean()
+//         }),
+//         params: yup.object().shape({
+//             user_id: yup.number().integer().required()
+//         }),
+//         headers: yup.object().shape({
+//             Authorization: yup.string().required()
+//         })
+//     }).meta({ path: "/users/{user_id}", method: "post", summary: "Update a user", description: "Update a user" })
+// )
 
-console.log(interpreter.paths)
+// console.log(interpreter.paths)
 
-console.log(JSON.stringify(result,null,' '));
+// console.log(JSON.stringify(result,null,' '));
 
 module.exports = { Interpreter }
