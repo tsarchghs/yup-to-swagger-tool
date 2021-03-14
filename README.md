@@ -1,4 +1,5 @@
 # yup-to-swagger-tool
+<warning>- Early version: Being actively developed and tested on a real project</warning>
 
 Installation: 
 - <code>npm install yup-to-swagger-tool</code>
