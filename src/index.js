@@ -1,211 +1,216 @@
 
 const yup = require("yup")
 
-function Interpreter() {};
+class Interpreter {
+    constructor({
+        securitySchemes,
+        paths,
+        tags,
 
-Interpreter.prototype.parse_string_field = field => {
-    return { type: "string" }
-}
-
-Interpreter.prototype.parse_number_field = field => {
-    return { type: "number" }
-}
-
-Interpreter.prototype.parse_object_field = object_field => {
-    let required = []
-    let properties = {}
-    let fields = Object.keys(object_field.fields);
-    for (field of fields){
-        let field_schema = object_field.fields[field];
-        if ((field_schema.spec && field_schema.spec.presence === "required")) required.push(field);
-        properties[field] = Interpreter.prototype.parse_field(field_schema,field);
+    }){
+        this.securitySchemes = securitySchemes || []
+        this.paths = paths || {}
+        this.tags = tags || []
     }
-    let parsed =  {
-        type: "object",
-        properties,
+    _tag_schema_ = yup.object().shape({
+        name: yup.string().required(),
+        description: yup.string().required()
+    })
+    add_tag = ({ name, description }) => {
+        this._tag_schema_.validateSync({
+            name, description
+        })
+        this.tags.push({
+            name, description
+        })
     }
-    if (required.length) parsed.required = required;
-    return parsed;
-}
-
-Interpreter.prototype.parse_array_field_whitelist_list = set => {
-    let oneOf = []
-    for (schema of set.values()) {
-        oneOf.push(Interpreter.prototype.parse_field(schema))
+    parse_string_field = field => {
+        return { type: "string" }
     }
-    return { oneOf } 
-}
-
-Interpreter.prototype.parse_array_field = object_field => {
-    let items;
-    if (object_field._whitelist.list.size) {
-        items = Interpreter.prototype.parse_array_field_whitelist_list(
-            object_field._whitelist.list
-        )
+    parse_number_field = field => {
+        return { type: "number" }
     }
-    else if (object_field.innerType) {
-        items = { oneOf: [ Interpreter.prototype.parse_field(object_field.innerType) ]}
-    }
-    return {
-        type: "array",
-        items
-    }
-}
-
-Interpreter.prototype.parse_field = (field,field_name) => {
-    let { type } = field;
-    if (!type) return {}
-    // console.log("DEBUG: parse_field - ",type,field)
-    let schema; 
-    if (type === "string") schema = Interpreter.prototype.parse_string_field(field);
-    if (type === "boolean") schema = { type: "boolean" }
-    else if (type === "number") schema = Interpreter.prototype.parse_number_field(field);
-    else if (type === "array") schema = Interpreter.prototype.parse_array_field(field);
-    else if (type === "object") schema = Interpreter.prototype.parse_object_field(field);
-    if (schema){
-        if (field.spec && field.spec.meta) {
-            if (field.spec.meta.example){
-                try {
-                    // console.log("Validating",field_name,field.spec.meta.example,field)
-                    field.validateSync(field.spec.meta.example, { strict: true })
-                } catch(err){
-                    throw new Error(`Example for field: ${field_name || "<anonymous_field>"} is invalid: \n${JSON.stringify(err.errors).replace("this",field_name || "<anonymous_field>")}`)
-                }
+    parse_meta = ({meta}) => {
+        let required_fields = [ "path", "method" ]
+        for (let required_field of required_fields) {
+            if (Object.keys(meta).indexOf(required_field) === -1){
+                throw new Error("parse_meta required field failed on field: ", required_field)
             }
-            schema.example = field.spec.meta.example
         }
-        return schema;
+        let tags = [];
+        if (meta.tag) tags.push(meta.tag);
+        if (meta.tags) tags.push(meta.tags)
+        return {
+            [meta.path]: { [meta.method]: { 
+                summary: meta.summary || "No summary",
+                description: meta.description || "No description",
+                tags,
+                security: !meta.security ? undefined :
+                [ {
+                    [meta.security] : [ ]
+                } ], 
+            }}
+        }
     }
-    throw new Error("parse_field failed: unsupported type: ", type)
-}
-
-Interpreter.prototype.parse_request_body = yup_schema => {
-    let requestBody = {
-        content: {
-            "application/json": {
-                schema: {
-                    type: "object",
-                    properties: {
-
+    parse_object_field = object_field => {
+        let required = []
+        let properties = {}
+        let fields = Object.keys(object_field.fields);
+        for (let field of fields){
+            let field_schema = object_field.fields[field];
+            if (field_schema.spec && field_schema.spec.presence === "required") required.push(field);
+            properties[field] = this.parse_field(field_schema,field);
+        }
+        let parsed =  {
+            type: "object",
+            properties,
+        }
+        if (required.length) parsed.required = required;
+        return parsed;
+    }
+    parse_array_field_whitelist_list = set => {
+        let oneOf = []
+        for (schema of set.values()) {
+            oneOf.push(this.parse_field(schema))
+        }
+        return { oneOf } 
+    }
+    parse_array_field = object_field => {
+        let items;
+        if (object_field._whitelist.list.size) {
+            items = this.parse_array_field_whitelist_list(
+                object_field._whitelist.list
+            )
+        }
+        else if (object_field.innerType) {
+            items = { oneOf: [ this.parse_field(object_field.innerType) ]}
+        }
+        return {
+            type: "array",
+            items
+        }
+    }
+    parse_query_or_params_or_headers = (in_,schema) => {
+        let parameters = [];
+        let fields = Object.keys(schema.fields)
+        for (field of fields){
+            let field_schema = schema.fields[field]
+            parameters.push({
+                in: in_,
+                name: field,
+                schema: this.parse_field(field_schema),
+                required: field_schema.spec && field_schema.spec.presence === "required",
+                description: field_schema.spec && field_schema.spec.meta && field_schema.spec.meta.description
+            })
+        }
+        console.log({parameters})
+        return parameters;
+    }
+    parse_query = query => this.parse_query_or_params_or_headers("query",query)
+    parse_params = params => this.parse_query_or_params_or_headers("path",params)
+    parse_headers = headers => this.parse_query_or_params_or_headers("header",headers)
+    parse_field = (field,field_name) => {
+        let { type } = field;
+        console.log("DEBUG: parse_field - ",type)
+        let schema; 
+        if (type === "string") schema = this.parse_string_field(field);
+        if (type === "boolean") schema = { type: "boolean" }
+        else if (type === "number") schema = this.parse_number_field(field);
+        else if (type === "array") schema = this.parse_array_field(field);
+        else if (type === "object") schema = this.parse_object_field(field);
+        if (schema){
+            if (field.spec && field.spec.meta) {
+                if (field.spec.meta.example){
+                    try {
+                        console.log("Validating",field_name,field.spec.meta.example,field)
+                        field.validateSync(field.spec.meta.example, { strict: true })
+                    } catch(err){
+                        throw new Error(`Example for field: ${field_name || "<anonymous_field>"} is invalid: \n${JSON.stringify(err.errors).replace("this",field_name || "<anonymous_field>")}`)
+                    }
+                }
+                schema.example = field.spec.meta.example
+            }
+            return schema;
+        }
+        throw new Error("parse_field failed: unsupported type: ", type)
+    }
+    parse_request_body = yup_schema => {
+        let requestBody = {
+            content: {
+                "application/json": {
+                    schema: {
+                        type: "object",
+                        properties: {
+    
+                        }
                     }
                 }
             }
         }
+        requestBody.content["application/json"].schema = this.parse_field(yup_schema);
+        return requestBody
     }
-    requestBody.content["application/json"].schema = Interpreter.prototype.parse_field(yup_schema);
-    return requestBody
-}
-Interpreter.prototype.parse_meta = ({meta}) => {
-    let required_fields = [ "path", "method" ]
-    for (required_field of required_fields) {
-        if (Object.keys(meta).indexOf(required_field) === -1){
-            throw new Error("parse_meta required field failed on field: ", required_field)
+    add_path = path_schema => {
+        let key = Object.keys(path_schema)[0]
+        let a = this.paths[key]
+        if (!a) this.paths[key] = {}
+        let sub_key = Object.keys(path_schema[Object.keys(path_schema)[0]])[0]
+        this.paths[key][sub_key] = path_schema[key][sub_key]
+        return true;
+    }
+    parse_schema = yup_schema => {
+        let swagger_path
+        console.log(yup_schema._meta,999)
+        let meta;
+        try {
+            let { spec: { meta: _meta_ } } = yup_schema
+            meta = _meta_;
+        } catch(err){
+            meta = yup_schema._meta;
         }
-    }
-    return {
-        [meta.path]: { [meta.method]: { 
-            summary: meta.summary || "No summary",
-            description: meta.description || "No description",
-        }}
-    }
-}
-
-Interpreter.prototype.parse_query_or_params_or_headers = (in_,schema) => {
-    let parameters = [];
-    let fields = Object.keys(schema.fields)
-    for (field of fields){
-        let field_schema = schema.fields[field]
-        parameters.push({
-            in: in_,
-            name: field,
-            schema: Interpreter.prototype.parse_field(field_schema),
-            required: (field_schema.spec && field_schema.spec.presence === "required"),
-            description: field_schema.spec && field_schema.spec.meta && field_schema.spec.meta.description
-        })
-    }
-    // console.log({parameters})
-    return parameters;
-}
-
-Interpreter.prototype.parse_query = query => Interpreter.prototype.parse_query_or_params_or_headers("query",query)
-Interpreter.prototype.parse_params = params => Interpreter.prototype.parse_query_or_params_or_headers("path",params)
-Interpreter.prototype.parse_headers = headers => Interpreter.prototype.parse_query_or_params_or_headers("header",headers)
-
-Interpreter.prototype.parse_schema = (yup_schema,meta_) => {
-    let meta = (yup_schema.spec && yup_schema.spec.meta) || meta_;
-    if (meta) swagger_path = { ...(Interpreter.prototype.parse_meta({ meta })) }
-    else throw new Error("meta is required") 
+        if (meta) swagger_path = { ...(this.parse_meta({ meta })) }
+        else throw new Error("meta is required") 
+        
+        if (yup_schema.type !== "object"){
+            console.log(yup_schema,13)
+            throw new Error("Schema must be a object")
+        }
     
-    if (yup_schema.type !== "object"){
-        // throw new Error("Schema must be a object")
-        // console.log(yup_schema)
-        return {}
-    }
-
-    let inside_path = swagger_path[Object.keys(swagger_path)[0]][meta.method]
-    let errors = []
-    try {
-        yup_schema.fields.requestBody.validateSync({}, { abortEarly: false, strict: true })
-    } catch(err) {
-        errors = err.errors
-    }
-    inside_path.responses = { 
-        200: { description: "success" }, 
-        403: {
-            "description": "Validation error",
-            "content": {
-                "application/json": {
-                    schema: { type: "object", properties: {
-                        code: { type: "number", example: 403 },
-                        message: { type: "string", example: "error" },
-                        errors: { 
-                            type: "array", 
-                            items: { oneOf: [ { type: "string" } ] }, 
-                            example: errors
-                        },
-                    }}
+        let inside_path = swagger_path[Object.keys(swagger_path)[0]][meta.method]
+        let errors = []
+        try {
+            yup_schema.fields.requestBody.validateSync({}, { abortEarly: false, strict: true })
+        } catch(err) {
+            errors = err.errors
+        }
+        inside_path.responses = { 
+            200: { description: "success" }, 
+            403: {
+                "description": "Validation error",
+                "content": {
+                    "application/json": {
+                        schema: { type: "object", properties: {
+                            code: { type: "number", example: 403 },
+                            message: { type: "string", example: "error" },
+                            errors: { 
+                                type: "array", 
+                                items: { oneOf: [ { type: "string" } ] }, 
+                                example: errors
+                            },
+                        }}
+                    }
                 }
-            }
-        } 
+            } 
+        }
+        let { requestBody, query, params, headers } = yup_schema.fields;
+        if (requestBody) inside_path.requestBody = this.parse_request_body(requestBody)
+        inside_path.parameters = []
+        if (query) inside_path.parameters = inside_path.parameters.concat(this.parse_query(query));
+        if (params) inside_path.parameters = inside_path.parameters.concat(this.parse_params(params));
+        if (headers) inside_path.parameters = inside_path.parameters.concat(this.parse_headers(headers));
+        this.add_path(swagger_path)
+        return swagger_path
     }
-    let { requestBody, query, params, headers } = yup_schema.fields;
-    if (requestBody) inside_path.requestBody = Interpreter.prototype.parse_request_body(requestBody)
-    inside_path.parameters = []
-    if (query) inside_path.parameters = inside_path.parameters.concat(Interpreter.prototype.parse_query(query));
-    if (params) inside_path.parameters = inside_path.parameters.concat(Interpreter.prototype.parse_params(params));
-    if (headers) inside_path.parameters = inside_path.parameters.concat(Interpreter.prototype.parse_headers(headers));
 
-    return swagger_path
 }
-
-// let interpreter = new Interpreter();
-
-
-// let result = interpreter.parse_schema(
-//     yup.object().shape({
-//         requestBody: yup.object().shape({
-//             name: yup.string().required().meta({ example: "Gjergj"}),
-//             user: yup.object().shape({
-//                 id: yup.number().integer().required()
-//             }).required().meta({ example: { id: 1 }}),
-//             items: yup.array().of(yup.number()).required().meta({ example: [1,2,3] }),
-//             items_2: yup.array().of(yup.string()).required().meta({ example:  [ "SDDSA", "SDAASD" ] }),
-//             required: yup.boolean().required().meta({ example: true })
-//         }),
-//         query: yup.object().shape({
-//             err_per_field: yup.boolean()
-//         }),
-//         params: yup.object().shape({
-//             user_id: yup.number().integer().required()
-//         }),
-//         headers: yup.object().shape({
-//             Authorization: yup.string().required()
-//         })
-//     }).meta({ path: "/users/{user_id}", method: "post", summary: "Update a user", description: "Update a user" })
-// )
-
-// console.log(interpreter.paths)
-
-// console.log(JSON.stringify(result,null,' '));
-
 module.exports = { Interpreter }
