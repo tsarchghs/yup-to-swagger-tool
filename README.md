@@ -153,4 +153,5 @@ module.exports = (yupSchema,options) => {
 ```
 
 Result: We get request data validated, and with a little more effort we have generated swagger with it.
-Then you can pass <b>.paths</b> to swaggerDocument.
+Then you can pass <b>.paths</b> to swaggerDocument.<br/>
+Auto-generated docs with help of yup-to-swagger-tool: https://prnt.sc/10lj9v8
