@@ -1,10 +1,13 @@
 # yup-to-swagger-tool
 <warning>- Early version: Being actively developed and tested on a real project</warning>
 
-Installation: 
-- <code>npm install yup-to-swagger-tool</code>
+<h3>Idea</h3>
+<h5>Being able to validate request data using yup and a middleware per route, and also getting auto-generated swagger docs along with it</h5>
 
-Usage:
+<h3>Installation:<h3> 
+<h6><code>npm install yup-to-swagger-tool</code></h6>
+
+<h3>Usage:</h3>
 
 <code>yts_interpreter.js</code>
 ```
