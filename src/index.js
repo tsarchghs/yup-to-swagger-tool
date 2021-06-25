@@ -41,14 +41,14 @@ class Interpreter {
         if (meta.tag) tags.push(meta.tag);
         if (meta.tags) tags.push(meta.tags)
         return {
-            [meta.path]: { [meta.method]: { 
+            [meta.path]: { [meta.method]: {
                 summary: meta.summary || "No summary",
                 description: meta.description || "No description",
                 tags,
                 security: !meta.security ? undefined :
                 [ {
                     [meta.security] : [ ]
-                } ], 
+                } ],
             }}
         }
     }
@@ -73,7 +73,7 @@ class Interpreter {
         for (schema of set.values()) {
             oneOf.push(this.parse_field(schema))
         }
-        return { oneOf } 
+        return { oneOf }
     }
     parse_array_field = object_field => {
         let items;
@@ -112,7 +112,7 @@ class Interpreter {
     parse_field = (field,field_name) => {
         let { type } = field;
         console.log("DEBUG: parse_field - ",type)
-        let schema; 
+        let schema;
         if (type === "string") schema = this.parse_string_field(field);
         if (type === "boolean") schema = { type: "boolean" }
         else if (type === "number") schema = this.parse_number_field(field);
@@ -141,7 +141,7 @@ class Interpreter {
                     schema: {
                         type: "object",
                         properties: {
-    
+
                         }
                     }
                 }
@@ -169,13 +169,13 @@ class Interpreter {
             meta = yup_schema._meta;
         }
         if (meta) swagger_path = { ...(this.parse_meta({ meta })) }
-        else throw new Error("meta is required") 
-        
+        else throw new Error("meta is required")
+
         if (yup_schema.type !== "object"){
             console.log(yup_schema,13)
             throw new Error("Schema must be a object")
         }
-    
+
         let inside_path = swagger_path[Object.keys(swagger_path)[0]][meta.method]
         let errors = []
         try {
@@ -183,8 +183,8 @@ class Interpreter {
         } catch(err) {
             errors = err.errors
         }
-        inside_path.responses = { 
-            200: { description: "success" }, 
+        inside_path.responses = {
+            200: { description: "success" },
             403: {
                 "description": "Validation error",
                 "content": {
@@ -192,15 +192,15 @@ class Interpreter {
                         schema: { type: "object", properties: {
                             code: { type: "number", example: 403 },
                             message: { type: "string", example: "error" },
-                            errors: { 
-                                type: "array", 
-                                items: { oneOf: [ { type: "string" } ] }, 
+                            errors: {
+                                type: "array",
+                                items: { oneOf: [ { type: "string" } ] },
                                 example: errors
                             },
                         }}
                     }
                 }
-            } 
+            }
         }
         let { requestBody, query, params, headers } = yup_schema.fields;
         if (requestBody) inside_path.requestBody = this.parse_request_body(requestBody)
@@ -209,8 +209,42 @@ class Interpreter {
         if (params) inside_path.parameters = inside_path.parameters.concat(this.parse_params(params));
         if (headers) inside_path.parameters = inside_path.parameters.concat(this.parse_headers(headers));
         this.add_path(swagger_path)
+
+        let { responses } = meta;
+        if (responses) {
+            for (let [statusCode, definition] of Object.entries(responses)) {
+                inside_path.responses[statusCode] = definition;
+            }
+        }
+
         return swagger_path
     }
 
 }
-module.exports = { Interpreter }
+
+let createResponseObject = (responseDescription, responseNumber, bodyProperties) => {
+    return {
+        "description": responseDescription,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "statusCode": {
+                            "type": "number",
+                            "example": responseNumber
+                        },
+                        ...(bodyProperties && {
+                            "body": {
+                                "type": "object",
+                                "properties": bodyProperties
+                            }
+                        })
+                    }
+                }
+            }
+        }
+    };
+};
+
+module.exports = { Interpreter, createResponseObject }
