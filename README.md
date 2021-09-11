@@ -64,7 +64,10 @@ let result = interpreter.parse_schema(
         security: "jwt_auth", 
         method: "post", 
         summary: "Update a user", 
-        description: "Update a user" 
+        description: "Update a user",
+        responses: {
+            200: createResponseObject("Return the updated user", 200, {"id": {"type":"string"}, "name": {"type":"string"}})
+        }
     })
 )
 console.log(JSON.stringify(result))
