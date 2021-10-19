@@ -6,6 +6,10 @@ Interpreter.prototype.parse_string_field = field => {
     return { type: "string" }
 }
 
+Interpreter.prototype.parse_string_format_field = (field, format) => {
+    return { type: "string", format: format }
+}
+
 Interpreter.prototype.parse_number_field = field => {
     return { type: "number" }
 }
@@ -52,10 +56,13 @@ Interpreter.prototype.parse_array_field = object_field => {
 }
 
 Interpreter.prototype.parse_field = (field,field_name) => {
-    let { type } = field;
+    let { type, format } = field;
     console.log("DEBUG: parse_field - ",type)
     let schema;
-    if (type === "string") schema = Interpreter.prototype.parse_string_field(field);
+    if (type === "string") {
+        if (format) schema = Interpreter.prototype.parse_string_format_field(field);
+        else schema = Interpreter.prototype.parse_string_field(field);
+    }
     if (type === "boolean") schema = { type: "boolean" }
     else if (type === "number") schema = Interpreter.prototype.parse_number_field(field);
     else if (type === "array") schema = Interpreter.prototype.parse_array_field(field);
