@@ -6,6 +6,20 @@ Interpreter.prototype.parse_string_field = field => {
     return { type: "string" }
 }
 
+/**
+ * As stated in openAPI 3.0 and JSON Schema Validation documentation,
+ * a date can be described as a string with specified format
+ * @param field
+ * @returns {{format: string, type: string}}
+ */
+Interpreter.prototype.parse_date_time_field = field => {
+    return { type: "string", format: "date-time" }
+}
+
+Interpreter.prototype.parse_string_format_field = format => {
+    return { type: "string", format: format }
+}
+
 Interpreter.prototype.parse_number_field = field => {
     return { type: "number" }
 }
@@ -52,11 +66,15 @@ Interpreter.prototype.parse_array_field = object_field => {
 }
 
 Interpreter.prototype.parse_field = (field,field_name) => {
-    let { type } = field;
+    let { type, format } = field;
     console.log("DEBUG: parse_field - ",type)
     let schema;
-    if (type === "string") schema = Interpreter.prototype.parse_string_field(field);
-    if (type === "boolean") schema = { type: "boolean" }
+    if (type === "string") {
+        if (field.spec.meta && field.spec.meta.format) schema = Interpreter.prototype.parse_string_format_field(field.spec.meta.format);
+        else schema = Interpreter.prototype.parse_string_field(field);
+    }
+    else if (type === "boolean") schema = { type: "boolean" };
+    else if (type === "date") schema = Interpreter.prototype.parse_date_time_field(field);
     else if (type === "number") schema = Interpreter.prototype.parse_number_field(field);
     else if (type === "array") schema = Interpreter.prototype.parse_array_field(field);
     else if (type === "object") schema = Interpreter.prototype.parse_object_field(field);
