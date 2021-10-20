@@ -12,7 +12,7 @@ import OperationObject = OpenAPI.OperationObject;
 import ParameterObject = OpenAPI.ParameterObject;
 import ResponsesObject = OpenAPI.ResponsesObject;
 
-export class Interpreter {
+class Interpreter {
     parseObjectField(objectField: ObjectSchema<any>): SchemaObject {
         let required: string[] = [];
         let properties: { [key: string]: SchemaObject } = {};
@@ -181,30 +181,31 @@ export class Interpreter {
     }
 }
 
-export default {
-    Interpreter,
-    createResponseObject(responseDescription: string, responseNumber: any, bodyProperties: { [key: string]: SchemaObject }): ResponseObject {
-        return {
-            description: responseDescription,
-            content: {
-                "application/json": {
-                    schema: {
-                        type: "object",
-                        properties: {
-                            statusCode: {
-                                type: "number",
-                                example: responseNumber
-                            },
-                            ...(bodyProperties && {
-                                body: {
-                                    type: "object",
-                                    properties: bodyProperties
-                                }
-                            })
-                        }
+const createResponseObject = (responseDescription: string, responseNumber: any, bodyProperties: { [key: string]: SchemaObject }): ResponseObject => {
+    return {
+        description: responseDescription,
+        content: {
+            "application/json": {
+                schema: {
+                    type: "object",
+                    properties: {
+                        statusCode: {
+                            type: "number",
+                            example: responseNumber
+                        },
+                        ...(bodyProperties && {
+                            body: {
+                                type: "object",
+                                properties: bodyProperties
+                            }
+                        })
                     }
                 }
             }
         }
     }
+}
+export {
+    Interpreter,
+    createResponseObject
 }
