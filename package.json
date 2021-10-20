@@ -2,7 +2,7 @@
   "name": "yup-to-swagger-tool",
   "version": "1.0.3",
   "description": "",
-  "main": "lib/Interpreter.js",
+  "main": "lib/src/Interpreter.js",
   "types": "types/*",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
