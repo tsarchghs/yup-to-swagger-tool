@@ -179,7 +179,10 @@ export class Interpreter {
             }
         };
     }
+}
 
+export default {
+    Interpreter,
     createResponseObject(responseDescription: string, responseNumber: any, bodyProperties: { [key: string]: SchemaObject }): ResponseObject {
         return {
             description: responseDescription,
