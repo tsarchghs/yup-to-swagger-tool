@@ -2,12 +2,11 @@
   "name": "yup-to-swagger-tool",
   "version": "1.0.3",
   "description": "",
-  "main": "src/Interpreter.ts",
+  "main": "lib/Interpreter.js",
   "types": "types/*",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prestart": "tsc",
-    "start": "node src/Interpreter.js"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
