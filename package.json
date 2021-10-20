@@ -2,10 +2,12 @@
   "name": "yup-to-swagger-tool",
   "version": "1.0.3",
   "description": "",
-  "main": "src/index.js",
+  "main": "src/Interpreter.ts",
+  "types": "types/*",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index"
+    "prestart": "tsc",
+    "start": "node src/Interpreter.js"
   },
   "repository": {
     "type": "git",
@@ -20,5 +22,8 @@
   "homepage": "https://github.com/gjergjk71/yup-to-swagger#readme",
   "dependencies": {
     "yup": "^0.32.9"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.4"
   }
 }
